@@ -2,8 +2,13 @@ const express = require("express");
 const { Server } = require("socket.io");
 const { v4: uuidV4 } = require("uuid");
 const http = require("http");
-
+const cors = require("cors");
 const app = express();
+app.use(
+  cors({
+    origin: "*",
+  })
+);
 const server = http.createServer(app);
 const port = process.env.PORT || 8080;
 
