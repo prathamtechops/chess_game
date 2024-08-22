@@ -8,8 +8,8 @@ const app = express();
 app.use(
   cors({
     origin: "https://chess-game-bcz7.vercel.app/",
-    methods: ["GET", "POST"],
-    credentials: true,
+    methods: ["GET", "POST"], // Specify the methods allowed
+    credentials: true, // Allow credentials if necessary (e.g., cookies)
   })
 );
 
@@ -22,6 +22,8 @@ const io = new Server(server, {
     credentials: true, // Same as above
   },
 });
+
+const port = process.env.PORT || 3000;
 
 const rooms = new Map();
 
