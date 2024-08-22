@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173", // Specify your frontend URL for CORS
+    origin: "https://chess-game-bcz7.vercel.app/",
     methods: ["GET", "POST"], // Specify the methods allowed
     credentials: true, // Allow credentials if necessary (e.g., cookies)
   })
@@ -17,7 +17,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // Match this with your frontend's URL
+    origin: "https://chess-game-bcz7.vercel.app/",
     methods: ["GET", "POST"],
     credentials: true, // Same as above
   },
