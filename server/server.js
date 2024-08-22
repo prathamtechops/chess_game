@@ -4,16 +4,23 @@ const { v4: uuidV4 } = require("uuid");
 const http = require("http");
 const cors = require("cors");
 const app = express();
+
 app.use(
   cors({
-    origin: "*",
+    origin: "http://localhost:5173", // Specify your frontend URL for CORS
+    methods: ["GET", "POST"], // Specify the methods allowed
+    credentials: true, // Allow credentials if necessary (e.g., cookies)
   })
 );
+
 const server = http.createServer(app);
-const port = process.env.PORT || 8080;
 
 const io = new Server(server, {
-  cors: "*",
+  cors: {
+    origin: "http://localhost:5173", // Match this with your frontend's URL
+    methods: ["GET", "POST"],
+    credentials: true, // Same as above
+  },
 });
 
 const rooms = new Map();
