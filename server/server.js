@@ -8,8 +8,8 @@ const app = express();
 app.use(
   cors({
     origin: "https://chess-game-bcz7.vercel.app/",
-    methods: ["GET", "POST"], // Specify the methods allowed
-    credentials: true, // Allow credentials if necessary (e.g., cookies)
+    methods: ["GET", "POST"],
+    credentials: true,
   })
 );
 
