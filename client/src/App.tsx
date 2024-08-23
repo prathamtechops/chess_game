@@ -42,7 +42,7 @@ function App() {
 
   useEffect(() => {
     if (usernameSubmitted) {
-      socket.on("roomJoined", (room: Room) => {
+      const handleRoomJoined = (room: Room) => {
         setRoom(room.roomId);
         setPlayers(room.players);
 
@@ -50,19 +50,23 @@ function App() {
         setOrientation(
           player && room.players.indexOf(player) === 0 ? "white" : "black"
         );
-      });
+      };
 
-      socket.on("startGame", (room: Room) => {
+      const handleStartGame = (room: Room) => {
         setPlayers(room.players);
         setGameStarted(true);
-      });
+      };
+
+      socket.on("roomJoined", handleRoomJoined);
+      socket.on("startGame", handleStartGame);
 
       return () => {
+        socket.off("roomJoined", handleRoomJoined);
+        socket.off("startGame", handleStartGame);
         socket.emit("closeRoom", { roomId: room });
       };
     }
   }, [usernameSubmitted, room]);
-
   return (
     <main className="container size-full mx-auto">
       <Dialog open={!usernameSubmitted}>
