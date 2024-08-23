@@ -27,6 +27,10 @@ const port = process.env.PORT || 3000;
 
 const rooms = new Map();
 
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
 io.on("connection", (socket) => {
   console.log(`${socket.id} connected`);
 
