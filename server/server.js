@@ -9,7 +9,6 @@ app.use(
   cors({
     origin: "https://chess-game-bcz7.vercel.app",
     methods: ["GET", "POST"], // Specify the methods allowed
-    credentials: true, // Allow credentials if necessary (e.g., cookies)
   })
 );
 
@@ -19,7 +18,6 @@ const io = new Server(server, {
   cors: {
     origin: "https://chess-game-bcz7.vercel.app",
     methods: ["GET", "POST"],
-    credentials: true, // Same as above
   },
 });
 
