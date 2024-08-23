@@ -68,7 +68,7 @@ function App() {
     }
   }, [usernameSubmitted, room]);
   return (
-    <main className="container size-full mx-auto">
+    <main className="container max-h-screen w-full mx-auto">
       <Dialog open={!usernameSubmitted}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

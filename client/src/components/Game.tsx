@@ -97,17 +97,28 @@ const Game: React.FC<GameProps> = ({ players, room, orientation, cleanup }) => {
 
   return (
     <>
-      <div className="flex flex-col md:flex-row gap-4">
-        <Chessboard
-          position={fen}
-          onPieceDrop={onDrop}
-          boardOrientation={orientation}
-        />
-        <div className="md:w-1/3 p-4 border border-gray-300 rounded-lg">
+      <div className="flex flex-col md:flex-row gap-4 h-full w-full max-h-[100vh]">
+        <div className="w-full md:w-2/3 flex justify-center items-center">
+          <Chessboard
+            position={fen}
+            onPieceDrop={onDrop}
+            boardOrientation={orientation}
+            customBoardStyle={{
+              borderRadius: "10px",
+              boxShadow:
+                "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
+              maxWidth: "100%",
+              height: "auto",
+              width: "auto",
+              maxHeight: "80vh",
+            }}
+          />
+        </div>
+        <div className="md:w-1/3 p-4 border border-gray-300 rounded-lg overflow-auto max-h-full">
           <h2 className="text-lg font-semibold mb-2">Turn: {turn}</h2>
           {error && <p className="text-red-500 mb-2">{error}</p>}
           <h3 className="text-md font-medium mb-2">Move History:</h3>
-          <ul className="list-disc list-inside">
+          <ul className="list-disc list-inside overflow-auto max-h-60">
             {moveHistory.map((move, index) => (
               <li key={index}>{move}</li>
             ))}
