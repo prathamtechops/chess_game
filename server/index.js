@@ -7,7 +7,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: "https://chess-game-bcz7.vercel.app",
+    origin: "*",
   })
 );
 
@@ -15,7 +15,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "https://chess-game-bcz7.vercel.app",
+    origin: "*",
   },
 });
 
