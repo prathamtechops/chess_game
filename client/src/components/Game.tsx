@@ -15,7 +15,7 @@ interface GameProps {
 const Game: React.FC<GameProps> = ({
   players,
   room,
-  cleanup,
+  // cleanup,
   currentPlayerId,
 }) => {
   const chess = useMemo(() => new Chess(), []);
