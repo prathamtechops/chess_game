@@ -58,13 +58,8 @@ function App() {
     };
   }, [room, usernameSubmitted, user_id]);
 
-  if (!user_id) return null;
-
-  if (!username) return null;
-
-  if (!channelId) return null;
-
-  if (!avatar) return null;
+  if (!channelId || !username || !user_id)
+    return <p className="container p-6">Missing Params</p>;
 
   return (
     <main className="container max-h-screen w-full mx-auto">
