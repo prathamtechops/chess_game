@@ -1,22 +1,14 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import "./App.css";
 import Game from "./components/Game";
-import { Button } from "./components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "./components/ui/dialog";
-import { Input } from "./components/ui/input";
-import { Label } from "./components/ui/label";
 import socket from "./socekt";
 
 export type Player = {
   id: string;
   username: string;
+  avatar: string;
+  orientation: "white" | "black";
 };
 
 type Room = {
@@ -25,83 +17,65 @@ type Room = {
 };
 
 function App() {
-  const [username, setUsername] = useState<string>("");
+  const [searchParams] = useSearchParams();
   const [usernameSubmitted, setUsernameSubmitted] = useState<boolean>(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [room, setRoom] = useState<string>("");
-  const [orientation, setOrientation] = useState<"white" | "black">("white");
   const [gameStarted, setGameStarted] = useState<boolean>(false);
+  const user_id = searchParams.get("user_id");
 
-  const onSubmit = () => {
-    if (!username) {
-      return;
-    }
-    socket.emit("username", username);
-    setUsernameSubmitted(true);
-  };
+  const username = searchParams.get("username");
+  const channelId = searchParams.get("channel_id");
+  const avatar = searchParams.get("avatar");
 
   useEffect(() => {
-    if (usernameSubmitted) {
-      const handleRoomJoined = (room: Room) => {
-        setRoom(room.roomId);
-        setPlayers(room.players);
-
-        const player = room.players.find((player) => player.id === socket.id);
-        setOrientation(
-          player && room.players.indexOf(player) === 0 ? "white" : "black"
-        );
-      };
-
-      const handleStartGame = (room: Room) => {
-        setPlayers(room.players);
-        setGameStarted(true);
-      };
-
-      socket.on("roomJoined", handleRoomJoined);
-      socket.on("startGame", handleStartGame);
-
-      return () => {
-        socket.off("roomJoined", handleRoomJoined);
-        socket.off("startGame", handleStartGame);
-        socket.emit("closeRoom", { roomId: room });
-      };
+    if (username && channelId) {
+      socket.emit("joinRoom", { username, roomId: channelId, avatar, user_id });
+      setUsernameSubmitted(true);
     }
-  }, [usernameSubmitted, room]);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!usernameSubmitted) return;
+
+    const handleRoomJoined = (room: Room) => {
+      setRoom(room.roomId);
+      setPlayers(room.players);
+    };
+
+    const handleStartGame = (room: Room) => {
+      setPlayers(room.players);
+      setGameStarted(true);
+    };
+
+    socket.on("roomJoined", handleRoomJoined);
+    socket.on("startGame", handleStartGame);
+
+    return () => {
+      socket.off("roomJoined", handleRoomJoined);
+      socket.off("startGame", handleStartGame);
+      socket.emit("closeRoom", { roomId: room });
+    };
+  }, [room, usernameSubmitted, user_id]);
+
+  if (!user_id) return null;
+
+  if (!username) return null;
+
+  if (!channelId) return null;
+
+  if (!avatar) return null;
+
   return (
     <main className="container max-h-screen w-full mx-auto">
-      <Dialog open={!usernameSubmitted}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Enter Username</DialogTitle>
-            <DialogDescription>Please enter your username.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="username" className="text-right">
-                Username
-              </Label>
-              <Input
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={onSubmit} type="submit">
-              Save changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {usernameSubmitted && !gameStarted && <h1>Waiting for an opponent...</h1>}
+      {!usernameSubmitted ||
+        (!gameStarted && <h1>Waiting for an opponent...</h1>)}
       {gameStarted && (
         <Game
           players={players}
-          room={room}
-          orientation={orientation}
+          room={channelId}
           cleanup={() => socket.emit("closeRoom", { roomId: room })}
+          currentPlayerId={user_id}
         />
       )}
     </main>
