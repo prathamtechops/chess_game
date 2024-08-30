@@ -1,9 +1,9 @@
-// Game.tsx
 import { Player } from "@/App";
 import socket from "@/socekt";
 import { Chess, Move } from "chess.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Chessboard } from "react-chessboard";
+import { Button } from "./ui/button";
 
 interface GameProps {
   players: Player[];
@@ -12,12 +12,7 @@ interface GameProps {
   currentPlayerId: string | null;
 }
 
-const Game: React.FC<GameProps> = ({
-  players,
-  room,
-  // cleanup,
-  currentPlayerId,
-}) => {
+const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const chess = useMemo(() => new Chess(), []);
   const [fen, setFen] = useState<string>(chess.fen());
   const [over, setOver] = useState<string>("");
@@ -89,7 +84,7 @@ const Game: React.FC<GameProps> = ({
       to: string;
       promotion?: string;
     }) => {
-      makeAMove(moveData); // Make the move when received from the socket
+      makeAMove(moveData);
     };
 
     socket.on("move", handleMove);
@@ -98,6 +93,42 @@ const Game: React.FC<GameProps> = ({
       socket.off("move", handleMove);
     };
   }, [makeAMove]);
+
+  const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
+  const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
+
+  const handlePlayAgainRequest = () => {
+    socket.emit("requestPlayAgain", { room });
+    setPlayAgainRequested(true);
+  };
+
+  const handlePlayAgainAccept = () => {
+    socket.emit("acceptPlayAgain", { room });
+  };
+
+  // Handling socket events for request and accept play again
+  useEffect(() => {
+    const handlePlayAgainRequestReceived = () => {
+      setPlayAgainReceived(true);
+    };
+
+    const handlePlayAgainAccepted = () => {
+      setPlayAgainRequested(false);
+      setPlayAgainReceived(false);
+      chess.reset();
+      setFen(chess.fen());
+      setError("");
+      setOver("");
+    };
+
+    socket.on("playAgainRequest", handlePlayAgainRequestReceived);
+    socket.on("playAgainAccepted", handlePlayAgainAccepted);
+
+    return () => {
+      socket.off("playAgainRequest", handlePlayAgainRequestReceived);
+      socket.off("playAgainAccepted", handlePlayAgainAccepted);
+    };
+  }, [chess]);
 
   const opponent = players.find(
     (player) => player.id !== currentPlayerId
@@ -108,12 +139,12 @@ const Game: React.FC<GameProps> = ({
 
   return (
     <>
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex items-center">
-          <img src={avatar} alt="Avatar" className="size-12 rounded-full" />
-          <p className="text-2xl  font-semibold p-2">{opponent}</p>
-        </div>
-        <div className="w-full md:w-2/3 flex justify-center items-center">
+      <div className="flex items-center  flex-col justify-center h-screen w-full gap-10">
+        <div className="flex flex-col items-center gap-3 justify-center w-[70%] h-[70%] ">
+          <div className="flex items-center  w-full gap-2">
+            <img src={avatar} alt="Avatar" className="w-12 h-12 rounded-full" />
+            <p className="text-2xl font-semibold">{opponent}</p>
+          </div>
           <Chessboard
             position={fen}
             onPieceDrop={onDrop}
@@ -124,15 +155,40 @@ const Game: React.FC<GameProps> = ({
                 "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
             }}
           />
-        </div>
-        <div>
-          <p className="text-2xl  font-semibold p-2">
-            {chess.turn() === "w" ? "White" : "Black"}'s turn
-          </p>
-          <p className="text-2xl  font-semibold p-2">{error}</p>
-          <p className="text-2xl  font-semibold p-2">{over}</p>
+          <div className="flex flex-col items-center text-center">
+            <p className="text-2xl font-semibold">
+              {chess.turn() === "w" ? "White" : "Black"}'s turn
+            </p>
+            {error && <p className="text-red-500">{error}</p>}
+            {over && <p className="text-green-500">{over}</p>}
+          </div>
         </div>
       </div>
+      {over && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg text-center space-y-4">
+            <h2 className="text-3xl font-bold mb-4">Game Over</h2>
+            <p className="text-lg">Thanks for playing!</p>
+            {playAgainRequested ? (
+              <p className="text-lg">Waiting for {opponent}...</p>
+            ) : playAgainReceived ? (
+              <Button
+                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                onClick={handlePlayAgainAccept}
+              >
+                Accept Rematch
+              </Button>
+            ) : (
+              <Button
+                className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                onClick={handlePlayAgainRequest}
+              >
+                Request Rematch
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 };

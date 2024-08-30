@@ -59,6 +59,15 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("requestPlayAgain", ({ room }) => {
+    socket.to(room).emit("playAgainRequest"); // Notify the other player
+  });
+
+  // Handle accepting play again request
+  socket.on("acceptPlayAgain", ({ room }) => {
+    io.to(room).emit("playAgainAccepted"); // Restart game for both players
+  });
+
   socket.on("move", (data) => {
     socket.to(data.room).emit("move", data.move);
   });
