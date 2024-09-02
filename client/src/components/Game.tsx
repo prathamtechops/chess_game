@@ -139,22 +139,28 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
 
   return (
     <>
-      <div className="flex items-center  flex-col justify-center h-screen w-full gap-10">
-        <div className="flex flex-col items-center gap-3 justify-center w-[70%] h-[70%] ">
-          <div className="flex items-center  w-full gap-2">
+      <div className="flex items-center flex-col justify-center h-full w-full gap-10">
+        <div className="flex flex-col items-center gap-3 justify-center">
+          <div className="flex items-center w-full gap-2">
             <img src={avatar} alt="Avatar" className="w-12 h-12 rounded-full" />
             <p className="text-2xl font-semibold">{opponent}</p>
           </div>
-          <Chessboard
-            position={fen}
-            onPieceDrop={onDrop}
-            boardOrientation={currentPlayerColour}
-            customBoardStyle={{
-              borderRadius: "10px",
-              boxShadow:
-                "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
-            }}
-          />
+          <div
+            className="w-full max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl"
+            style={{ aspectRatio: "1/1" }}
+          >
+            <Chessboard
+              position={fen}
+              onPieceDrop={onDrop}
+              boardOrientation={currentPlayerColour}
+              customBoardStyle={{
+                borderRadius: "10px",
+                boxShadow:
+                  "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
+              }}
+              boardWidth={500}
+            />
+          </div>
           <div className="flex flex-col items-center text-center">
             <p className="text-2xl font-semibold">
               {chess.turn() === "w" ? "White" : "Black"}'s turn

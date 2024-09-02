@@ -62,7 +62,7 @@ function App() {
     return <p className="container p-6">Missing Params</p>;
 
   return (
-    <main className="h-full flex flex-col background">
+    <main className="h-screen w-screen flex flex-col background">
       {!usernameSubmitted ||
         (!gameStarted && <h1>Waiting for an opponent...</h1>)}
       {gameStarted && (
