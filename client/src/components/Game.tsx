@@ -106,7 +106,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     socket.emit("acceptPlayAgain", { room });
   };
 
-  // Handling socket events for request and accept play again
   useEffect(() => {
     const handlePlayAgainRequestReceived = () => {
       setPlayAgainReceived(true);

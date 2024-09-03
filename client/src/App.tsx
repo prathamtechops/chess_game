@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ChessboardDnDProvider } from "react-chessboard";
 import { useSearchParams } from "react-router-dom";
 import "./App.css";
 import Game from "./components/Game";
@@ -66,12 +67,14 @@ function App() {
       {!usernameSubmitted ||
         (!gameStarted && <h1>Waiting for an opponent...</h1>)}
       {gameStarted && (
-        <Game
-          players={players}
-          room={channelId}
-          cleanup={() => socket.emit("closeRoom", { roomId: room })}
-          currentPlayerId={user_id}
-        />
+        <ChessboardDnDProvider>
+          <Game
+            players={players}
+            room={channelId}
+            cleanup={() => socket.emit("closeRoom", { roomId: room })}
+            currentPlayerId={user_id}
+          />
+        </ChessboardDnDProvider>
       )}
     </main>
   );
