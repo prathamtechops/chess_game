@@ -136,18 +136,42 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     (player) => player.id === currentPlayerId
   )?.avatar;
 
+  const [boardWidth, setBoardWidth] = useState<number>(600);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // setBoardWidth(window.innerWidth);
+      if (window.innerWidth > 1024) {
+        setBoardWidth(800);
+      } else if (window.innerWidth > 768) {
+        setBoardWidth(700);
+      } else {
+        setBoardWidth(600);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <>
-      <div className="flex items-center flex-col justify-center h-full w-full gap-10">
-        <div className="flex flex-col items-center gap-3 justify-center">
-          <div className="flex items-center w-full gap-2">
-            <img src={avatar} alt="Avatar" className="w-12 h-12 rounded-full" />
-            <p className="text-2xl font-semibold">{opponent}</p>
+      <div className="flex items-center flex-col  justify-center  h-full w-full gap-10">
+        <div className="flex flex-col lg:flex-row items-center gap-6 justify-center">
+          <div className="flex flex-col items-start self-start w-full gap-6">
+            <div className="flex  items-center gap-3">
+              <img
+                src={avatar}
+                alt="Avatar"
+                className="w-12 h-12 lg:size-16 rounded-full"
+              />
+              <p className="text-2xl lg:text-4xl font-semibold">{opponent}</p>
+            </div>
+            <p className="text-2xl font-semibold hidden lg:block">
+              {chess.turn() === "w" ? "White" : "Black"}'s turn
+            </p>
           </div>
-          <div
-            className="w-full max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl"
-            style={{ aspectRatio: "1/1" }}
-          >
+          <div className="" style={{ aspectRatio: "1/1" }}>
             <Chessboard
               position={fen}
               onPieceDrop={onDrop}
@@ -157,11 +181,11 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
                 boxShadow:
                   "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
               }}
-              boardWidth={500}
+              boardWidth={boardWidth}
             />
           </div>
           <div className="flex flex-col items-center text-center">
-            <p className="text-2xl font-semibold">
+            <p className="text-2xl font-semibold lg:hidden">
               {chess.turn() === "w" ? "White" : "Black"}'s turn
             </p>
             {error && <p className="text-red-500">{error}</p>}
