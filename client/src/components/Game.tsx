@@ -12,15 +12,63 @@ interface GameProps {
   currentPlayerId: string | null;
 }
 
+const formatTime = (time: number) => {
+  const minutes = Math.floor(time / 60);
+  const seconds = time % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+};
+
 const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const chess = useMemo(() => new Chess(), []);
   const [fen, setFen] = useState<string>(chess.fen());
   const [over, setOver] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [elapsedTime, setElapsedTime] = useState<number>(0); // State to track elapsed time
+  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
+    null
+  );
+  const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
+  const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
+  const [boardWidth, setBoardWidth] = useState<number>(600);
 
   const currentPlayerColour = players.find(
     (player) => player.id === currentPlayerId
   )?.orientation;
+
+  const opponent = players.find(
+    (player) => player.id !== currentPlayerId
+  )?.username;
+  const avatar = players.find(
+    (player) => player.id === currentPlayerId
+  )?.avatar;
+
+  const startTimer = () => {
+    const interval = setInterval(() => {
+      setElapsedTime((prevTime) => prevTime + 1);
+    }, 1000);
+    setTimerInterval(interval);
+  };
+
+  // Stop the timer
+  const stopTimer = useCallback(() => {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      setTimerInterval(null);
+    }
+  }, [timerInterval]);
+  // Reset the timer
+  const resetTimer = () => {
+    stopTimer();
+    setElapsedTime(0);
+    startTimer();
+  };
+
+  useEffect(() => {
+    startTimer();
+    return () => stopTimer();
+  }, [stopTimer]);
 
   const makeAMove = useCallback(
     (move: { from: string; to: string; promotion?: string }): Move | null => {
@@ -32,6 +80,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
 
           if (chess.isGameOver()) {
             if (chess.isCheckmate()) {
+              stopTimer();
               setOver(
                 `Checkmate! ${chess.turn() === "w" ? "black" : "white"} wins!`
               );
@@ -94,9 +143,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     };
   }, [makeAMove]);
 
-  const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
-  const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
-
   const handlePlayAgainRequest = () => {
     socket.emit("requestPlayAgain", { room });
     setPlayAgainRequested(true);
@@ -118,6 +164,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       setFen(chess.fen());
       setError("");
       setOver("");
+      resetTimer();
     };
 
     socket.on("playAgainRequest", handlePlayAgainRequestReceived);
@@ -127,16 +174,8 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       socket.off("playAgainRequest", handlePlayAgainRequestReceived);
       socket.off("playAgainAccepted", handlePlayAgainAccepted);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chess]);
-
-  const opponent = players.find(
-    (player) => player.id !== currentPlayerId
-  )?.username;
-  const avatar = players.find(
-    (player) => player.id === currentPlayerId
-  )?.avatar;
-
-  const [boardWidth, setBoardWidth] = useState<number>(600);
 
   useEffect(() => {
     const handleResize = () => {
@@ -170,6 +209,9 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <p className="text-2xl font-semibold hidden lg:block">
               {chess.turn() === "w" ? "White" : "Black"}'s turn
             </p>
+            <p className="text-xl font-semibold mt-2">
+              Game Duration: {formatTime(elapsedTime)}
+            </p>
           </div>
           <div className="" style={{ aspectRatio: "1/1" }}>
             <Chessboard
@@ -187,6 +229,9 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
           <div className="flex flex-col items-center text-center">
             <p className="text-2xl font-semibold lg:hidden">
               {chess.turn() === "w" ? "White" : "Black"}'s turn
+            </p>
+            <p className="text-xl font-semibold mt-2 lg:hidden">
+              Game Duration: {formatTime(elapsedTime)}
             </p>
             {error && <p className="text-red-500">{error}</p>}
             {over && <p className="text-green-500">{over}</p>}
