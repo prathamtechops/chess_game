@@ -44,31 +44,34 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     (player) => player.id === currentPlayerId
   )?.avatar;
 
-  const startTimer = () => {
-    const interval = setInterval(() => {
-      setElapsedTime((prevTime) => prevTime + 1);
-    }, 1000);
-    setTimerInterval(interval);
-  };
+  const startTimer = useCallback(() => {
+    if (!timerInterval) {
+      // Prevent multiple intervals
+      const interval = setInterval(() => {
+        setElapsedTime((prevTime) => prevTime + 1);
+      }, 1000);
+      setTimerInterval(interval);
+    }
+  }, [timerInterval]);
 
-  // Stop the timer
   const stopTimer = useCallback(() => {
     if (timerInterval) {
       clearInterval(timerInterval);
       setTimerInterval(null);
     }
   }, [timerInterval]);
-  // Reset the timer
-  const resetTimer = () => {
+
+  const resetTimer = useCallback(() => {
     stopTimer();
     setElapsedTime(0);
     startTimer();
-  };
+  }, [startTimer, stopTimer]);
 
   useEffect(() => {
+    // Start the timer when the game board first renders
     startTimer();
-    return () => stopTimer();
-  }, [stopTimer]);
+    return () => stopTimer(); // Clean up when the component unmounts
+  }, [startTimer, stopTimer]);
 
   const makeAMove = useCallback(
     (move: { from: string; to: string; promotion?: string }): Move | null => {
@@ -79,8 +82,8 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
           setError("");
 
           if (chess.isGameOver()) {
+            stopTimer();
             if (chess.isCheckmate()) {
-              stopTimer();
               setOver(
                 `Checkmate! ${chess.turn() === "w" ? "black" : "white"} wins!`
               );
@@ -100,7 +103,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
         return null;
       }
     },
-    [chess]
+    [chess, stopTimer]
   );
 
   function onDrop(sourceSquare: string, targetSquare: string) {
@@ -174,8 +177,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       socket.off("playAgainRequest", handlePlayAgainRequestReceived);
       socket.off("playAgainAccepted", handlePlayAgainAccepted);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chess]);
+  }, [chess, resetTimer]);
 
   useEffect(() => {
     const handleResize = () => {
