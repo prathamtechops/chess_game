@@ -12,7 +12,7 @@ const io = new Server(server, {
   transports: ["websocket"],
 });
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 8000;
 const rooms = new Map();
 
 app.get("/", (req, res) => {

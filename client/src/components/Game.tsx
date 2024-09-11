@@ -12,26 +12,63 @@ interface GameProps {
   currentPlayerId: string | null;
 }
 
-const formatTime = (time: number) => {
-  const minutes = Math.floor(time / 60);
-  const seconds = time % 60;
-  return `${minutes.toString().padStart(2, "0")}:${seconds
-    .toString()
-    .padStart(2, "0")}`;
-};
+// const formatTime = (time: number) => {
+//   const minutes = Math.floor(time / 60);
+//   const seconds = time % 60;
+//   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+// };
 
 const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const chess = useMemo(() => new Chess(), []);
   const [fen, setFen] = useState<string>(chess.fen());
   const [over, setOver] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [elapsedTime, setElapsedTime] = useState<number>(0); // State to track elapsed time
-  const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(
-    null
-  );
+
   const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
   const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
   const [boardWidth, setBoardWidth] = useState<number>(600);
+
+  // const [whiteTime, setWhiteTime] = useState<number>(60); // 10 minutes in seconds
+  // const [blackTime, setBlackTime] = useState<number>(60); // 10 minutes in seconds
+  // const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // const startTimer = useCallback(() => {
+  //   if (timer) clearInterval(timer); // Clear any existing timer
+
+  //   const playerTurn = chess.turn() === "w" ? "white" : "black";
+
+  //   // Start a new timer based on whose turn it is
+  //   const newTimer = setInterval(() => {
+  //     if (playerTurn === "white") {
+  //       setWhiteTime((prev) => {
+  //         if (prev <= 1) {
+  //           clearInterval(newTimer);
+  //           setOver("Time's up! Black wins!");
+  //           return 0;
+  //         }
+  //         return prev - 1;
+  //       });
+  //     } else {
+  //       setBlackTime((prev) => {
+  //         if (prev <= 1) {
+  //           clearInterval(newTimer);
+  //           setOver("Time's up! White wins!");
+  //           return 0;
+  //         }
+  //         return prev - 1;
+  //       });
+  //     }
+  //   }, 1000); // Decrement every second
+
+  //   setTimer(newTimer);
+  // }, [chess.turn(), timer]);
+
+  // const stopTimer = useCallback(() => {
+  //   if (timer) {
+  //     clearInterval(timer);
+  //     setTimer(null);
+  //   }
+  // }, [timer]);
 
   const currentPlayerColour = players.find(
     (player) => player.id === currentPlayerId
@@ -40,38 +77,10 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const opponent = players.find(
     (player) => player.id !== currentPlayerId
   )?.username;
+  const myPlayer = players.find((player) => player.id === currentPlayerId);
   const avatar = players.find(
     (player) => player.id === currentPlayerId
   )?.avatar;
-
-  const startTimer = useCallback(() => {
-    if (!timerInterval) {
-      // Prevent multiple intervals
-      const interval = setInterval(() => {
-        setElapsedTime((prevTime) => prevTime + 1);
-      }, 1000);
-      setTimerInterval(interval);
-    }
-  }, [timerInterval]);
-
-  const stopTimer = useCallback(() => {
-    if (timerInterval) {
-      clearInterval(timerInterval);
-      setTimerInterval(null);
-    }
-  }, [timerInterval]);
-
-  const resetTimer = useCallback(() => {
-    stopTimer();
-    setElapsedTime(0);
-    startTimer();
-  }, [startTimer, stopTimer]);
-
-  useEffect(() => {
-    // Start the timer when the game board first renders
-    startTimer();
-    return () => stopTimer(); // Clean up when the component unmounts
-  }, [startTimer, stopTimer]);
 
   const makeAMove = useCallback(
     (move: { from: string; to: string; promotion?: string }): Move | null => {
@@ -82,7 +91,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
           setError("");
 
           if (chess.isGameOver()) {
-            stopTimer();
+            // stopTimer();
             if (chess.isCheckmate()) {
               setOver(
                 `Checkmate! ${chess.turn() === "w" ? "black" : "white"} wins!`
@@ -93,6 +102,10 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
               setOver("Game over");
             }
           }
+          // else {
+          //   stopTimer();
+          //   startTimer();
+          // }
         } else {
           setError("Invalid move. Please try again.");
         }
@@ -103,7 +116,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
         return null;
       }
     },
-    [chess, stopTimer]
+    [chess]
   );
 
   function onDrop(sourceSquare: string, targetSquare: string) {
@@ -167,7 +180,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       setFen(chess.fen());
       setError("");
       setOver("");
-      resetTimer();
     };
 
     socket.on("playAgainRequest", handlePlayAgainRequestReceived);
@@ -177,17 +189,14 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       socket.off("playAgainRequest", handlePlayAgainRequestReceived);
       socket.off("playAgainAccepted", handlePlayAgainAccepted);
     };
-  }, [chess, resetTimer]);
+  }, [chess]);
 
   useEffect(() => {
     const handleResize = () => {
-      // setBoardWidth(window.innerWidth);
-      if (window.innerWidth > 1024) {
-        setBoardWidth(800);
-      } else if (window.innerWidth > 768) {
-        setBoardWidth(700);
+      if (window.innerWidth > 768) {
+        setBoardWidth(525);
       } else {
-        setBoardWidth(600);
+        setBoardWidth(480);
       }
     };
     window.addEventListener("resize", handleResize);
@@ -195,27 +204,44 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // useEffect(() => {
+  //   startTimer();
+  //   return () => stopTimer();
+  // }, [startTimer, stopTimer]);
+
+  const isMyTurn =
+    chess.turn() === (currentPlayerColour === "white" ? "w" : "b");
+
   return (
     <>
-      <div className="flex items-center flex-col  justify-center  h-full w-full gap-10">
-        <div className="flex flex-col lg:flex-row items-center gap-6 justify-center">
+      <div className=" text-white flex items-center flex-col  justify-center  h-full w-full gap-10">
+        <div className="bg-black rounded-3xl p-3 flex flex-col lg:flex-row items-center gap-3 justify-center">
           <div className="flex flex-col items-start self-start w-full gap-6">
-            <div className="flex  items-center gap-3">
-              <img
-                src={avatar}
-                alt="Avatar"
-                className="w-12 h-12 lg:size-16 rounded-full"
-              />
-              <p className="text-2xl lg:text-4xl font-semibold">{opponent}</p>
+            <div className="flex justify-between items-center w-full">
+              <div className="flex items-center gap-3">
+                <img
+                  src={avatar}
+                  alt="Avatar"
+                  className="size-8 rounded-full"
+                />
+                <p className="text-sm font-semibold">
+                  {opponent}
+                  <span className="text-xs text-slate-300">
+                    {!isMyTurn && "- Opponent's Turn"}
+                  </span>
+                </p>
+              </div>
+              <div>
+                {/* Render Time */}
+                {/* <p className="text-sm font-semibold">
+                  {formatTime(
+                    currentPlayerColour === "white" ? blackTime : whiteTime
+                  )}
+                </p> */}
+              </div>
             </div>
-            <p className="text-2xl font-semibold hidden lg:block">
-              {chess.turn() === "w" ? "White" : "Black"}'s turn
-            </p>
-            <p className="text-xl font-semibold mt-2">
-              Game Duration: {formatTime(elapsedTime)}
-            </p>
           </div>
-          <div className="" style={{ aspectRatio: "1/1" }}>
+          <div>
             <Chessboard
               position={fen}
               onPieceDrop={onDrop}
@@ -228,13 +254,31 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
               boardWidth={boardWidth}
             />
           </div>
+          <div className="flex flex-col items-start self-start w-full">
+            <div className="flex justify-between items-center w-full">
+              <div className="flex  items-center gap-3">
+                <img
+                  src={myPlayer?.avatar}
+                  alt="Avatar"
+                  className="size-8 rounded-full"
+                />
+                <p className="text-sm font-semibold">
+                  {myPlayer?.username}
+                  <span className="text-xs text-slate-300">
+                    {isMyTurn && "- Your Turn"}
+                  </span>
+                </p>
+              </div>
+              <div>
+                {/* <p className="text-sm font-semibold">
+                  {formatTime(
+                    currentPlayerColour === "white" ? whiteTime : blackTime
+                  )}
+                </p> */}
+              </div>
+            </div>
+          </div>
           <div className="flex flex-col items-center text-center">
-            <p className="text-2xl font-semibold lg:hidden">
-              {chess.turn() === "w" ? "White" : "Black"}'s turn
-            </p>
-            <p className="text-xl font-semibold mt-2 lg:hidden">
-              Game Duration: {formatTime(elapsedTime)}
-            </p>
             {error && <p className="text-red-500">{error}</p>}
             {over && <p className="text-green-500">{over}</p>}
           </div>

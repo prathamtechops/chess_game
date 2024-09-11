@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import { ChessboardDnDProvider } from "react-chessboard";
 import { useSearchParams } from "react-router-dom";
 import "./App.css";
-import Game from "./components/Game";
 import socket from "./socekt";
+import Game from "./components/Game";
 
 export type Player = {
   id: string;
