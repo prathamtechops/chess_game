@@ -10,6 +10,7 @@ export type Player = {
   username: string;
   avatar: string;
   orientation: "white" | "black";
+  remainingTime: number;
 };
 
 type Room = {

@@ -40,3 +40,9 @@
 .read-the-docs {
   color: #888;
 }
+
+/* Add styles for timer */
+.timer {
+  font-size: 1.2rem;
+  font-weight: bold;
+}

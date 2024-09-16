@@ -12,12 +12,6 @@ interface GameProps {
   currentPlayerId: string | null;
 }
 
-// const formatTime = (time: number) => {
-//   const minutes = Math.floor(time / 60);
-//   const seconds = time % 60;
-//   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-// };
-
 const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const chess = useMemo(() => new Chess(), []);
   const [fen, setFen] = useState<string>(chess.fen());
@@ -28,47 +22,10 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
   const [boardWidth, setBoardWidth] = useState<number>(600);
 
-  // const [whiteTime, setWhiteTime] = useState<number>(60); // 10 minutes in seconds
-  // const [blackTime, setBlackTime] = useState<number>(60); // 10 minutes in seconds
-  // const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
-
-  // const startTimer = useCallback(() => {
-  //   if (timer) clearInterval(timer); // Clear any existing timer
-
-  //   const playerTurn = chess.turn() === "w" ? "white" : "black";
-
-  //   // Start a new timer based on whose turn it is
-  //   const newTimer = setInterval(() => {
-  //     if (playerTurn === "white") {
-  //       setWhiteTime((prev) => {
-  //         if (prev <= 1) {
-  //           clearInterval(newTimer);
-  //           setOver("Time's up! Black wins!");
-  //           return 0;
-  //         }
-  //         return prev - 1;
-  //       });
-  //     } else {
-  //       setBlackTime((prev) => {
-  //         if (prev <= 1) {
-  //           clearInterval(newTimer);
-  //           setOver("Time's up! White wins!");
-  //           return 0;
-  //         }
-  //         return prev - 1;
-  //       });
-  //     }
-  //   }, 1000); // Decrement every second
-
-  //   setTimer(newTimer);
-  // }, [chess.turn(), timer]);
-
-  // const stopTimer = useCallback(() => {
-  //   if (timer) {
-  //     clearInterval(timer);
-  //     setTimer(null);
-  //   }
-  // }, [timer]);
+  const [time, setTime] = useState<{ white: number; black: number }>({
+    white: 600,
+    black: 600,
+  });
 
   const currentPlayerColour = players.find(
     (player) => player.id === currentPlayerId
@@ -91,7 +48,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
           setError("");
 
           if (chess.isGameOver()) {
-            // stopTimer();
             if (chess.isCheckmate()) {
               setOver(
                 `Checkmate! ${chess.turn() === "w" ? "black" : "white"} wins!`
@@ -102,10 +58,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
               setOver("Game over");
             }
           }
-          // else {
-          //   stopTimer();
-          //   startTimer();
-          // }
         } else {
           setError("Invalid move. Please try again.");
         }
@@ -120,7 +72,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   );
 
   function onDrop(sourceSquare: string, targetSquare: string) {
-    if (!currentPlayerColour) return false;
+    if (!currentPlayerColour || over) return false;
     const playerTurn = currentPlayerColour === "white" ? "w" : "b";
 
     if (chess.turn() !== playerTurn) {
@@ -180,6 +132,10 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       setFen(chess.fen());
       setError("");
       setOver("");
+      setTime({
+        white: 600,
+        black: 600,
+      });
     };
 
     socket.on("playAgainRequest", handlePlayAgainRequestReceived);
@@ -204,17 +160,41 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // useEffect(() => {
-  //   startTimer();
-  //   return () => stopTimer();
-  // }, [startTimer, stopTimer]);
+  useEffect(() => {
+    socket.on("timeUpdate", ({ playerId, remainingTime }) => {
+      setTime((prev) =>
+        players.find((p) => p.id === playerId)?.orientation === "white"
+          ? { ...prev, white: remainingTime }
+          : { ...prev, black: remainingTime }
+      );
+    });
+
+    socket.on("gameOver", ({ winner }) => {
+      if (winner === currentPlayerId) {
+        setOver("You win! Opponent ran out of time.");
+      } else {
+        setOver("You lose! Your time ran out.");
+      }
+    });
+
+    return () => {
+      socket.off("timeUpdate");
+      socket.off("gameOver");
+    };
+  }, [currentPlayerId, players]);
 
   const isMyTurn =
     chess.turn() === (currentPlayerColour === "white" ? "w" : "b");
 
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   return (
     <>
-      <div className=" text-white flex items-center flex-col  justify-center  h-full w-full gap-10">
+      <div className="text-white flex items-center flex-col justify-center h-full w-full gap-10">
         <div className="bg-black rounded-3xl p-3 flex flex-col lg:flex-row items-center gap-3 justify-center">
           <div className="flex flex-col items-start self-start w-full gap-6">
             <div className="flex justify-between items-center w-full">
@@ -232,12 +212,11 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
                 </p>
               </div>
               <div>
-                {/* Render Time */}
-                {/* <p className="text-sm font-semibold">
+                <p className="text-sm font-semibold timer">
                   {formatTime(
-                    currentPlayerColour === "white" ? blackTime : whiteTime
+                    currentPlayerColour === "white" ? time.black : time.white
                   )}
-                </p> */}
+                </p>
               </div>
             </div>
           </div>
@@ -256,7 +235,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
           </div>
           <div className="flex flex-col items-start self-start w-full">
             <div className="flex justify-between items-center w-full">
-              <div className="flex  items-center gap-3">
+              <div className="flex items-center gap-3">
                 <img
                   src={myPlayer?.avatar}
                   alt="Avatar"
@@ -270,11 +249,11 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
                 </p>
               </div>
               <div>
-                {/* <p className="text-sm font-semibold">
+                <p className="text-sm font-semibold timer">
                   {formatTime(
-                    currentPlayerColour === "white" ? whiteTime : blackTime
+                    currentPlayerColour === "white" ? time.white : time.black
                   )}
-                </p> */}
+                </p>
               </div>
             </div>
           </div>
