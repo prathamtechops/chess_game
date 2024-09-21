@@ -15,6 +15,23 @@ const io = new Server(server, {
 const port = process.env.PORT || 8000;
 const rooms = new Map();
 
+// Utility function to sanitize room data
+function sanitizeRoom(room) {
+  return {
+    roomId: room.roomId,
+    players: room.players.map(
+      ({ id, username, avatar, orientation, remainingTime }) => ({
+        id,
+        username,
+        avatar,
+        orientation,
+        remainingTime,
+      })
+    ),
+    currentTurn: room.currentTurn,
+  };
+}
+
 const GAME_TIME = 600; // 10 minutes in seconds
 
 io.on("connection", (socket) => {
@@ -57,7 +74,7 @@ io.on("connection", (socket) => {
     await socket.join(roomId);
 
     if (room.players.length === 2) {
-      io.to(roomId).emit("startGame", room);
+      io.to(roomId).emit("startGame", sanitizeRoom(room));
       startTimer(roomId);
     }
   });
@@ -90,7 +107,7 @@ io.on("connection", (socket) => {
       roomData.players.forEach((player) => (player.remainingTime = GAME_TIME));
       roomData.currentTurn = roomData.players[0].id;
       rooms.set(room, roomData);
-      io.to(room).emit("playAgainAccepted", roomData);
+      io.to(room).emit("playAgainAccepted", sanitizeRoom(roomData));
       resetTimer(room);
     }
   });
@@ -133,6 +150,10 @@ io.on("connection", (socket) => {
 function startTimer(roomId) {
   const room = rooms.get(roomId);
   if (!room) return;
+
+  if (room.timer) {
+    clearInterval(room.timer);
+  }
 
   room.timer = setInterval(() => {
     const currentPlayer = room.players.find((p) => p.id === room.currentTurn);
