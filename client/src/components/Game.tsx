@@ -27,17 +27,9 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     black: 600,
   });
 
-  const currentPlayerColour = players.find(
-    (player) => player.id === currentPlayerId
-  )?.orientation;
+  const currentPlayer = players.find((player) => player.id === currentPlayerId);
 
-  const opponent = players.find(
-    (player) => player.id !== currentPlayerId
-  )?.username;
-  const myPlayer = players.find((player) => player.id === currentPlayerId);
-  const avatar = players.find(
-    (player) => player.id === currentPlayerId
-  )?.avatar;
+  const opponent = players.find((player) => player.id !== currentPlayerId);
 
   const makeAMove = useCallback(
     (move: { from: string; to: string; promotion?: string }): Move | null => {
@@ -72,8 +64,8 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   );
 
   function onDrop(sourceSquare: string, targetSquare: string) {
-    if (!currentPlayerColour || over) return false;
-    const playerTurn = currentPlayerColour === "white" ? "w" : "b";
+    if (!currentPlayer?.orientation || over) return false;
+    const playerTurn = currentPlayer?.orientation === "white" ? "w" : "b";
 
     if (chess.turn() !== playerTurn) {
       setError("It's not your turn!");
@@ -162,6 +154,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
 
   useEffect(() => {
     socket.on("timeUpdate", ({ playerId, remainingTime }) => {
+      console.log("timeUpdate", playerId, remainingTime);
       setTime((prev) =>
         players.find((p) => p.id === playerId)?.orientation === "white"
           ? { ...prev, white: remainingTime }
@@ -184,7 +177,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   }, [currentPlayerId, players]);
 
   const isMyTurn =
-    chess.turn() === (currentPlayerColour === "white" ? "w" : "b");
+    chess.turn() === (currentPlayer?.orientation === "white" ? "w" : "b");
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
@@ -200,12 +193,12 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <div className="flex justify-between items-center w-full">
               <div className="flex items-center gap-3">
                 <img
-                  src={avatar}
+                  src={opponent?.avatar}
                   alt="Avatar"
                   className="size-8 rounded-full"
                 />
                 <p className="text-sm font-semibold">
-                  {opponent}
+                  {opponent?.username}
                   <span className="text-xs text-slate-300">
                     {!isMyTurn && "- Opponent's Turn"}
                   </span>
@@ -214,7 +207,9 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
               <div>
                 <p className="text-sm font-semibold timer">
                   {formatTime(
-                    currentPlayerColour === "white" ? time.black : time.white
+                    currentPlayer?.orientation === "white"
+                      ? time.black
+                      : time.white
                   )}
                 </p>
               </div>
@@ -224,7 +219,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <Chessboard
               position={fen}
               onPieceDrop={onDrop}
-              boardOrientation={currentPlayerColour}
+              boardOrientation={currentPlayer?.orientation}
               customBoardStyle={{
                 borderRadius: "10px",
                 boxShadow:
@@ -237,12 +232,12 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <div className="flex justify-between items-center w-full">
               <div className="flex items-center gap-3">
                 <img
-                  src={myPlayer?.avatar}
+                  src={currentPlayer?.avatar}
                   alt="Avatar"
                   className="size-8 rounded-full"
                 />
                 <p className="text-sm font-semibold">
-                  {myPlayer?.username}
+                  {currentPlayer?.username}
                   <span className="text-xs text-slate-300">
                     {isMyTurn && "- Your Turn"}
                   </span>
@@ -251,7 +246,9 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
               <div>
                 <p className="text-sm font-semibold timer">
                   {formatTime(
-                    currentPlayerColour === "white" ? time.white : time.black
+                    currentPlayer?.orientation === "white"
+                      ? time.white
+                      : time.black
                   )}
                 </p>
               </div>
@@ -269,7 +266,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <h2 className="text-3xl font-bold mb-4">Game Over</h2>
             <p className="text-lg">Thanks for playing!</p>
             {playAgainRequested ? (
-              <p className="text-lg">Waiting for {opponent}...</p>
+              <p className="text-lg">Waiting for {opponent?.username}...</p>
             ) : playAgainReceived ? (
               <Button
                 className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
