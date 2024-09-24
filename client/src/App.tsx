@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
+import { ChessboardDnDProvider } from "react-chessboard";
 import { useSearchParams } from "react-router-dom";
 import "./App.css";
-import Game from "./components/Game";
 import socket from "./socekt";
+import Game from "./components/Game";
 
 export type Player = {
   id: string;
   username: string;
   avatar: string;
   orientation: "white" | "black";
+  remainingTime: number;
 };
 
 type Room = {
@@ -62,16 +64,18 @@ function App() {
     return <p className="container p-6">Missing Params</p>;
 
   return (
-    <main className="h-screen w-screen flex flex-col background">
+    <main className="h-screen w-screen flex flex-col bg-black/90">
       {!usernameSubmitted ||
         (!gameStarted && <h1>Waiting for an opponent...</h1>)}
       {gameStarted && (
-        <Game
-          players={players}
-          room={channelId}
-          cleanup={() => socket.emit("closeRoom", { roomId: room })}
-          currentPlayerId={user_id}
-        />
+        <ChessboardDnDProvider>
+          <Game
+            players={players}
+            room={channelId}
+            cleanup={() => socket.emit("closeRoom", { roomId: room })}
+            currentPlayerId={user_id}
+          />
+        </ChessboardDnDProvider>
       )}
     </main>
   );

@@ -18,9 +18,18 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const [over, setOver] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  const currentPlayerColour = players.find(
-    (player) => player.id === currentPlayerId
-  )?.orientation;
+  const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
+  const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
+  const [boardWidth, setBoardWidth] = useState<number>(600);
+
+  const [time, setTime] = useState<{ white: number; black: number }>({
+    white: 600,
+    black: 600,
+  });
+
+  const currentPlayer = players.find((player) => player.id === currentPlayerId);
+
+  const opponent = players.find((player) => player.id !== currentPlayerId);
 
   const makeAMove = useCallback(
     (move: { from: string; to: string; promotion?: string }): Move | null => {
@@ -55,8 +64,8 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   );
 
   function onDrop(sourceSquare: string, targetSquare: string) {
-    if (!currentPlayerColour) return false;
-    const playerTurn = currentPlayerColour === "white" ? "w" : "b";
+    if (!currentPlayer?.orientation || over) return false;
+    const playerTurn = currentPlayer?.orientation === "white" ? "w" : "b";
 
     if (chess.turn() !== playerTurn) {
       setError("It's not your turn!");
@@ -94,9 +103,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     };
   }, [makeAMove]);
 
-  const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
-  const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
-
   const handlePlayAgainRequest = () => {
     socket.emit("requestPlayAgain", { room });
     setPlayAgainRequested(true);
@@ -106,7 +112,6 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     socket.emit("acceptPlayAgain", { room });
   };
 
-  // Handling socket events for request and accept play again
   useEffect(() => {
     const handlePlayAgainRequestReceived = () => {
       setPlayAgainReceived(true);
@@ -119,6 +124,10 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
       setFen(chess.fen());
       setError("");
       setOver("");
+      setTime({
+        white: 600,
+        black: 600,
+      });
     };
 
     socket.on("playAgainRequest", handlePlayAgainRequestReceived);
@@ -130,41 +139,122 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     };
   }, [chess]);
 
-  const opponent = players.find(
-    (player) => player.id !== currentPlayerId
-  )?.username;
-  const avatar = players.find(
-    (player) => player.id === currentPlayerId
-  )?.avatar;
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 768) {
+        setBoardWidth(525);
+      } else {
+        setBoardWidth(480);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    socket.on("timeUpdate", ({ playerId, remainingTime }) => {
+      console.log("timeUpdate", playerId, remainingTime);
+      setTime((prev) =>
+        players.find((p) => p.id === playerId)?.orientation === "white"
+          ? { ...prev, white: remainingTime }
+          : { ...prev, black: remainingTime }
+      );
+    });
+
+    socket.on("gameOver", ({ winner }) => {
+      if (winner === currentPlayerId) {
+        setOver("You win! Opponent ran out of time.");
+      } else {
+        setOver("You lose! Your time ran out.");
+      }
+    });
+
+    return () => {
+      socket.off("timeUpdate");
+      socket.off("gameOver");
+    };
+  }, [currentPlayerId, players]);
+
+  const isMyTurn =
+    chess.turn() === (currentPlayer?.orientation === "white" ? "w" : "b");
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
 
   return (
     <>
-      <div className="flex items-center flex-col justify-center h-full w-full gap-10">
-        <div className="flex flex-col items-center gap-3 justify-center">
-          <div className="flex items-center w-full gap-2">
-            <img src={avatar} alt="Avatar" className="w-12 h-12 rounded-full" />
-            <p className="text-2xl font-semibold">{opponent}</p>
+      <div className="text-white flex items-center flex-col justify-center h-full w-full gap-10">
+        <div className="bg-black rounded-3xl p-3 flex flex-col lg:flex-row items-center gap-3 justify-center">
+          <div className="flex flex-col items-start self-start w-full gap-6">
+            <div className="flex justify-between items-center w-full">
+              <div className="flex items-center gap-3">
+                <img
+                  src={opponent?.avatar}
+                  alt="Avatar"
+                  className="size-8 rounded-full"
+                />
+                <p className="text-sm font-semibold">
+                  {opponent?.username}
+                  <span className="text-xs text-slate-300">
+                    {!isMyTurn && "- Opponent's Turn"}
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold timer">
+                  {formatTime(
+                    currentPlayer?.orientation === "white"
+                      ? time.black
+                      : time.white
+                  )}
+                </p>
+              </div>
+            </div>
           </div>
-          <div
-            className="w-full max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl"
-            style={{ aspectRatio: "1/1" }}
-          >
+          <div>
             <Chessboard
               position={fen}
               onPieceDrop={onDrop}
-              boardOrientation={currentPlayerColour}
+              boardOrientation={currentPlayer?.orientation}
               customBoardStyle={{
                 borderRadius: "10px",
                 boxShadow:
                   "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
               }}
-              boardWidth={500}
+              boardWidth={boardWidth}
             />
           </div>
+          <div className="flex flex-col items-start self-start w-full">
+            <div className="flex justify-between items-center w-full">
+              <div className="flex items-center gap-3">
+                <img
+                  src={currentPlayer?.avatar}
+                  alt="Avatar"
+                  className="size-8 rounded-full"
+                />
+                <p className="text-sm font-semibold">
+                  {currentPlayer?.username}
+                  <span className="text-xs text-slate-300">
+                    {isMyTurn && "- Your Turn"}
+                  </span>
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-semibold timer">
+                  {formatTime(
+                    currentPlayer?.orientation === "white"
+                      ? time.white
+                      : time.black
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
           <div className="flex flex-col items-center text-center">
-            <p className="text-2xl font-semibold">
-              {chess.turn() === "w" ? "White" : "Black"}'s turn
-            </p>
             {error && <p className="text-red-500">{error}</p>}
             {over && <p className="text-green-500">{over}</p>}
           </div>
@@ -176,7 +266,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <h2 className="text-3xl font-bold mb-4">Game Over</h2>
             <p className="text-lg">Thanks for playing!</p>
             {playAgainRequested ? (
-              <p className="text-lg">Waiting for {opponent}...</p>
+              <p className="text-lg">Waiting for {opponent?.username}...</p>
             ) : playAgainReceived ? (
               <Button
                 className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
