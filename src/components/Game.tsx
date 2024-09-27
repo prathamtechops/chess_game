@@ -142,7 +142,7 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth > 768) {
-        setBoardWidth(525);
+        setBoardWidth(550);
       } else {
         setBoardWidth(480);
       }
