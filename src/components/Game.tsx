@@ -1,6 +1,6 @@
 import { Player } from "@/App";
 import socket from "@/socekt";
-import { Chess, Move } from "chess.js";
+import { Chess, Move, Square } from "chess.js";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Chessboard } from "react-chessboard";
 import { Button } from "./ui/button";
@@ -17,6 +17,8 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
   const [fen, setFen] = useState<string>(chess.fen());
   const [over, setOver] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [selectedPiece, setSelectedPiece] = useState<Square | null>(null);
+  const [availableMoves, setAvailableMoves] = useState<Square[]>([]);
 
   const [playAgainRequested, setPlayAgainRequested] = useState<boolean>(false);
   const [playAgainReceived, setPlayAgainReceived] = useState<boolean>(false);
@@ -152,6 +154,41 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const handleSquareClick = (square: Square) => {
+    if (!currentPlayer?.orientation || over) return;
+    const playerTurn = currentPlayer?.orientation === "white" ? "w" : "b";
+
+    if (chess.turn() !== playerTurn) {
+      return;
+    }
+
+    if (selectedPiece) {
+      if (availableMoves.includes(square)) {
+        const moveData = {
+          from: selectedPiece,
+          to: square,
+          promotion: "q",
+        };
+
+        const move = makeAMove(moveData);
+
+        if (move) {
+          socket.emit("move", { move: moveData, room });
+        }
+      }
+      setSelectedPiece(null);
+      setAvailableMoves([]);
+    } else {
+      const piece = chess.get(square);
+      if (piece && piece.color === chess.turn()) {
+        setSelectedPiece(square);
+        setAvailableMoves(
+          chess.moves({ square, verbose: true }).map((move) => move.to)
+        );
+      }
+    }
+  };
+
   useEffect(() => {
     socket.on("timeUpdate", ({ playerId, remainingTime }) => {
       console.log("timeUpdate", playerId, remainingTime);
@@ -219,6 +256,9 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
             <Chessboard
               position={fen}
               onPieceDrop={onDrop}
+              areArrowsAllowed={true}
+              onSquareClick={handleSquareClick}
+              arePremovesAllowed={true}
               boardOrientation={currentPlayer?.orientation}
               customBoardStyle={{
                 borderRadius: "10px",
@@ -226,6 +266,21 @@ const Game: React.FC<GameProps> = ({ players, room, currentPlayerId }) => {
                   "0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23)",
               }}
               boardWidth={boardWidth}
+              customSquareStyles={{
+                ...(selectedPiece
+                  ? {
+                      [selectedPiece]: {
+                        backgroundColor: "rgba(255, 255, 0, 0.4)",
+                      },
+                    }
+                  : {}),
+                ...Object.fromEntries(
+                  availableMoves.map((move) => [
+                    move,
+                    { backgroundColor: "rgba(0, 255, 0, 0.4)" },
+                  ])
+                ),
+              }}
             />
           </div>
           <div className="flex flex-col items-start self-start w-full">
